@@ -1,26 +1,28 @@
 #pragma once
 #include <memory>
 #include "ConstantPool.h"
+#include <vector>
 const unsigned int JAVA_MAGIC_NUMBER = 0xCAFEBABE;
 
 struct JavaHeader
 {
-  JavaHeader()
+  JavaHeader() { }
+  ~JavaHeader() 
   {
-    constant_pool = nullptr;
+    for (auto &p : constant_pool)
+    {
+      delete p;
+    }
   }
 
-  ~JavaHeader()
-  {
-    delete [] constant_pool;
-  }
+
 
   unsigned int magic_number;
-  short int minor_version;
-  short int major_version;
-  short int constant_pool_count;
+  unsigned short int minor_version;
+  unsigned short int major_version;
+  unsigned short int constant_pool_count;
 
-  cp_pool *constant_pool;
+  std::vector<cp_pool *> constant_pool;
 
 #ifdef _DEBUG
   const char * GetVersion()
@@ -46,4 +48,5 @@ struct JavaHeader
     }
   }
 #endif
+
 };

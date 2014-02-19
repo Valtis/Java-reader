@@ -4,7 +4,7 @@
 
 int main()
 {
-  std::ifstream file("main.class", std::ios::binary);
+  std::ifstream file("Peli.class", std::ios::binary);
   HeaderReader h;
   JavaHeader header;
   try 
@@ -79,6 +79,20 @@ int main()
   }
 
   std::cout << "This_class: " << header.this_class << "\n";
+  std::cout << "Super_class: " << header.super_class << "\n";
+  std::cout << "Interfaces_count: " << header.interfaces_count << "\n";
+
+  if (header.interfaces_count != 0)
+  {
+    std::cout << "Interfaces: \n";
+    for (auto i : header.interfaces)
+    {
+      std::cout << "  " << i << "\n";
+    }
+  }
+
+  std::cout << "Field_count: " << header.field_count << "\n";
+
   system("pause");
 
 }

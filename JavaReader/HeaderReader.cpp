@@ -51,6 +51,11 @@ JavaHeader HeaderReader::ReadHeader(std::istream &file)
   ReadAccessFlags(file, header);
   
   ReadThisClass(file, header);
+  ReadSuperClass(file, header);
+
+  ReadInterfaceCount(file, header);
+  ReadInterfaces(header, file);
+  ReadFieldCount(file, header);
 
 
   return header;
@@ -79,7 +84,7 @@ void HeaderReader::ReadConstantPoolCount( std::istream &file, JavaHeader &header
   file.read((char *)&header.constant_pool_count, 2);
   SwapEndianess16(header.constant_pool_count);
 }
-#include <iostream>
+
 void HeaderReader::ReadConstants( std::istream &file, JavaHeader &header )
 {
   header.constant_pool.reserve(header.constant_pool_count);
@@ -304,4 +309,58 @@ void HeaderReader::ReadThisClass( std::istream &file, JavaHeader &header )
       " but actual type is " + std::to_string(header.constant_pool[header.this_class]->tag));
   }
 
+}
+
+void HeaderReader::ReadSuperClass( std::istream &file, JavaHeader &header )
+{
+  file.read((char *)&header.super_class, 2);
+  SwapEndianess16(header.super_class);
+  if (header.super_class != 0)
+  {
+    if (header.super_class < 1 || header.super_class >= header.constant_pool_count)
+    {
+      throw std::runtime_error("Invalid super class index: " + header.super_class);
+    }
+
+    if (header.constant_pool[header.super_class]->tag != CONSTANT_Class)
+    {
+      throw std::runtime_error("Invalid constant type for super_class. Expected " + std::to_string(CONSTANT_Class) +
+        " but actual type is " + std::to_string(header.constant_pool[header.super_class]->tag));
+    }
+  }
+}
+
+void HeaderReader::ReadInterfaceCount( std::istream &file, JavaHeader &header )
+{
+  file.read((char *)&header.interfaces_count, 2);
+  SwapEndianess16(header.interfaces_count);
+}
+
+void HeaderReader::ReadInterfaces( JavaHeader &header, std::istream &file )
+{
+  for (int i = 0; i < header.interfaces_count; ++i)
+  {
+    uint16_t interface;
+    file.read((char *)&interface, 2);
+    SwapEndianess16(interface);
+
+    if (interface < 1 || interface >= header.constant_pool_count)
+    {
+      throw std::runtime_error("Invalid interface index: " + interface);
+    }
+
+    if (header.constant_pool[interface]->tag != CONSTANT_Class)
+    {
+      throw std::runtime_error("Invalid constant type for interface. Expected " + std::to_string(CONSTANT_Class) +
+        " but actual type is " + std::to_string(header.constant_pool[interface]->tag));
+    }
+
+    header.interfaces.push_back(interface);
+  }
+}
+
+void HeaderReader::ReadFieldCount( std::istream &file, JavaHeader &header )
+{
+  file.read((char *)&header.field_count, 2);
+  SwapEndianess16(header.field_count);
 }

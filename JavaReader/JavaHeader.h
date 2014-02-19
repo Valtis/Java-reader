@@ -33,6 +33,10 @@ struct JavaHeader
   std::vector<cp_info *> constant_pool;
   uint16_t access_flags;
   uint16_t this_class;
+  uint16_t super_class;
+  uint16_t interfaces_count;
+  std::vector<uint16_t> interfaces;
+  uint16_t field_count;
 
 #ifdef _DEBUG
   const char * GetVersion()

@@ -37,21 +37,17 @@ public:
   ~HeaderReader();
   JavaHeader ReadHeader(std::istream &file);
 
-  
-
-  
-
+ 
 private:
 
   void ReadMagicNumber( std::istream &file, JavaHeader &header );
   void ReadMinorVersion( std::istream &file, JavaHeader &header );
   void ReadMajorVersion( std::istream &file, JavaHeader &header );
   void ReadConstantPoolCount( std::istream &file, JavaHeader &header );
+
   void ReadConstants( std::istream &file,  JavaHeader &header);
-  
   void ReadClassData( std::istream & file, JavaHeader & header, std::vector<Validation> &validations);
-  void ReadRef( std::istream & file, JavaHeader & header, unsigned char tag, std::vector<Validation> &validations);
-  
+  void ReadRef( std::istream & file, JavaHeader & header, unsigned char tag, std::vector<Validation> &validations);  
   void ReadString( std::istream & file, JavaHeader & header, std::vector<Validation> &validations );
   void ReadInteger( std::istream & file, JavaHeader & header );
   void ReadFloat( std::istream & file, JavaHeader & header );
@@ -62,4 +58,9 @@ private:
 
   void ReadAccessFlags( std::istream &file, JavaHeader &header );
   void ReadThisClass( std::istream &file, JavaHeader &header );
+  void ReadSuperClass( std::istream &file, JavaHeader &header );
+  void ReadInterfaceCount( std::istream &file, JavaHeader &header );
+  void ReadInterfaces( JavaHeader &header, std::istream &file );
+  void ReadFieldCount( std::istream &file, JavaHeader &header );
+
 };

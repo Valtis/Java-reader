@@ -2,15 +2,29 @@
 #include <istream>
 #include <limits>       
 
-void SwapEndianess16(unsigned short int &val)
+void SwapEndianess16(uint16_t &val)
 {
   val = (val >> 8) | (val << 8);
 }
 
-void SwapEndianess32(unsigned int &val)
+void SwapEndianess32(uint32_t &val)
 {
+  uint32_t mask = 255;
+  val = ((val & (mask << 24)) >> 24) | ((val & (mask << 16)) >> 8) | ((val & (mask << 8)) << 8) | ((val & mask) << 24);
+}
 
-  val = ((val & (255 << 24)) >> 24) | ((val & (255 << 16)) >> 8) | ((val & (255 << 8)) << 8) | ((val & 255) << 24);
+void SwapEndianess64(uint64_t &val)
+{
+  uint64_t mask = 255;
+  val = 
+    ((val & (mask << 54)) >> 54) | 
+    ((val & (mask << 48)) >> 40) | 
+    ((val & (mask << 40)) >> 24) | 
+    ((val & (mask << 32)) >> 8) |
+    ((val & (mask << 24)) << 8) |
+    ((val & (mask << 16)) << 24) |
+    ((val & (mask << 8)) << 40) |
+    (val & 255) << 54;
 }
 
 HeaderReader::HeaderReader()
@@ -62,10 +76,11 @@ void HeaderReader::ReadConstantPoolCount( std::istream &file, JavaHeader &header
   file.read((char *)&header.constant_pool_count, 2);
   SwapEndianess16(header.constant_pool_count);
 }
-
+#include <iostream>
 void HeaderReader::ReadConstants( std::istream &file, JavaHeader &header )
 {
   header.constant_pool.reserve(header.constant_pool_count);
+  header.constant_pool.push_back(nullptr); // indexing begins from 1
   std::vector<Validation> validations;
   validations.reserve(header.constant_pool_count);
 
@@ -98,12 +113,14 @@ void HeaderReader::ReadConstants( std::istream &file, JavaHeader &header )
       break;
     case CONSTANT_Long:
       ReadLong(file, header);
+      ++i;
       break;  
     case CONSTANT_Double:
       ReadDouble(file, header);
+      ++i;
       break;
     case CONSTANT_NameAndType:
-      ReadNameAndType(file, header);
+      ReadNameAndType(file, header, validations);
       break;
     case CONSTANT_Utf8:
       ReadUtf8(file, header);
@@ -121,7 +138,7 @@ void HeaderReader::ReadConstants( std::istream &file, JavaHeader &header )
 
 void HeaderReader::ReadClassData( std::istream & file, JavaHeader & header, std::vector<Validation> &validations )
 {
-  auto p = new cp_pool_class;
+  auto p = new cp_class_info;
   p->tag = CONSTANT_Class;
   file.read((char *)&p->name_index, 2);
   SwapEndianess16(p->name_index);
@@ -133,12 +150,12 @@ void HeaderReader::ReadClassData( std::istream & file, JavaHeader & header, std:
 
 void HeaderReader::ReadRef( std::istream & file, JavaHeader & header, unsigned char tag, std::vector<Validation> &validations )
 {
-  auto p = new cp_pool_refs;
+  auto p = new cp_refs_info;
   p->tag = tag;
 
   file.read((char *)&p->class_index, 2);
   SwapEndianess16(p->class_index);
-  validations.emplace_back(p->class_index, CONSTANT_Class);
+  validations.emplace_back(p->class_index, CONSTANT_Class, "Reference class index must point to CONSTANT_class");
 
   file.read((char *)&p->name_and_type_index, 2);
   SwapEndianess16(p->name_and_type_index);
@@ -150,7 +167,7 @@ void HeaderReader::ReadRef( std::istream & file, JavaHeader & header, unsigned c
 
 void HeaderReader::ReadString( std::istream & file, JavaHeader & header, std::vector<Validation> &validations )
 {
-  auto p = new cp_pool_string;
+  auto p = new cp_string_info;
   p->tag = CONSTANT_String;
   file.read((char *)&p->string_index, 2);
   SwapEndianess16(p->string_index);
@@ -162,60 +179,65 @@ void HeaderReader::ReadString( std::istream & file, JavaHeader & header, std::ve
 
 void HeaderReader::ReadInteger( std::istream & file, JavaHeader & header )
 {
-  auto p = new cp_pool_integer_float;
+  auto p = new cp_integer_float_info;
   p->tag = CONSTANT_Integer;
-  unsigned int temp;
+  uint32_t temp;
   file.read((char *)&temp, 4);
   SwapEndianess32(temp);
   p->value.i = temp;
+  header.constant_pool.push_back(p);
 }
 
 void HeaderReader::ReadFloat( std::istream & file, JavaHeader & header )
 {
-  auto p = new cp_pool_integer_float;
+  auto p = new cp_integer_float_info;
   p->tag = CONSTANT_Float;
 
-  unsigned int temp;
+  uint32_t temp;
   file.read((char *)&temp, 4);
   SwapEndianess32(temp);
   
   p->value.i = temp; // conserves the bit pattern;
-  
-  /*if (temp == 0x7f800000)
-  {
-    p->value.f = std::numeric_limits<float>::infinity();
-  }
-  else if (temp == 0xff800000)
-  {
-    p->value.f = -std::numeric_limits<float>::infinity();
-  }
-  else if ((temp >= 0x7f800001 && temp <=0x7fffffff) || (temp>= 0xff800001 && temp <= 0xffffffff))
-  {
-    p->value.f = std::numeric_limits<float>::quiet_NaN();
-  }
-  else
-  {
-    int s = ((temp >> 31) == 0) ? 1 : -1;
-    int e = ((temp >> 23) & 0xff);
-    int m = (e == 0) ? (temp & 0x7fffff) << 1 : (temp & 0x7fffff) | 0x800000;
-    p->value.f = s * m * pow(2, e - 150);
-  }*/
-
+  header.constant_pool.push_back(p);
 }
 
 void HeaderReader::ReadLong( std::istream & file, JavaHeader & header )
 {
-  throw std::logic_error("The method or operation is not implemented.");
+  auto p = new cp_long_double_info;
+  p->tag = CONSTANT_Long;
+  uint64_t temp;
+  file.read((char *)&temp, 8);
+  SwapEndianess64(temp);
+  p->value.l = temp;
+  header.constant_pool.push_back(p);
+  header.constant_pool.push_back(nullptr); // takes two slots
 }
 
 void HeaderReader::ReadDouble( std::istream & file, JavaHeader & header )
 {
-  throw std::logic_error("The method or operation is not implemented.");
+  auto p = new cp_long_double_info;
+  p->tag = CONSTANT_Double;
+  uint64_t temp;
+  file.read((char *)&temp, 8);
+  SwapEndianess64(temp);
+  p->value.l = temp;
+  header.constant_pool.push_back(p);
+  header.constant_pool.push_back(nullptr); // takes two slots
 }
 
-void HeaderReader::ReadNameAndType( std::istream & file, JavaHeader & header )
+void HeaderReader::ReadNameAndType( std::istream & file, JavaHeader & header, std::vector<Validation> &validations )
 {
-  throw std::logic_error("The method or operation is not implemented.");
+  auto p = new cp_name_and_type_info;
+  p->tag = CONSTANT_NameAndType;
+  file.read((char *)&p->name_index, 2);
+  SwapEndianess16(p->name_index);
+  validations.emplace_back(p->name_index, CONSTANT_Utf8);
+
+  file.read((char *)&p->descriptor_index, 2);
+  SwapEndianess16(p->descriptor_index);
+  validations.emplace_back(p->descriptor_index, CONSTANT_Utf8);
+
+  header.constant_pool.push_back(p);
 }
 
 void HeaderReader::ReadUtf8( std::istream & file, JavaHeader & header )

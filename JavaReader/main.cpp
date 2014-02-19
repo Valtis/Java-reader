@@ -6,7 +6,17 @@ int main()
 {
   std::ifstream file("main.class", std::ios::binary);
   HeaderReader h;
-  JavaHeader header = h.ReadHeader(file);
+  JavaHeader header;
+  try 
+  {
+    header = h.ReadHeader(file);
+  }
+  catch (std::exception &ex)
+  {
+    std::cout << "Exception: " << ex.what() << "\n";
+    system("pause");
+    return -1;
+  }
 
  /* for (int i = 31; i >= 0; --i)
   {
@@ -32,6 +42,21 @@ int main()
   std::cout << "Java version: " << header.GetVersion() << "\n";
 
   std::cout << "Constant pool count: " << header.constant_pool_count << "\n";
+  
+  std::cout << "Constant types: " << "\n";
+  int index = 1;
+  for (auto &p : header.constant_pool)
+  {
+    std::cout << "Index: " << index++ << " Type: ";
+    if (p == nullptr)
+    {
+      std::cout << " Nullptr\n";
+    }
+    else 
+    {
+      std::cout << (int)p->tag << "\n";
+    }
+  }
 
   system("pause");
 

@@ -9,12 +9,16 @@ struct JavaHeader
   JavaHeader() { }
   ~JavaHeader() 
   {
-    for (auto &p : constant_pool)
+  
+  }
+
+  void ReleaseMemory()
+  {
+    for (cp_info *p : constant_pool)
     {
       delete p;
     }
   }
-
 
 
   unsigned int magic_number;
@@ -22,7 +26,7 @@ struct JavaHeader
   unsigned short int major_version;
   unsigned short int constant_pool_count;
 
-  std::vector<cp_pool *> constant_pool;
+  std::vector<cp_info *> constant_pool;
 
 #ifdef _DEBUG
   const char * GetVersion()

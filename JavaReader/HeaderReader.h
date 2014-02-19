@@ -6,24 +6,27 @@ class Validation
 {
 public:
   Validation(unsigned int i, unsigned char type) : index(i), expectedType(type) {}
+  Validation(unsigned int i, unsigned char type, std::string msg) : index(i), expectedType(type), message(msg) {}
 
-  void Validate(const std::vector<cp_pool *> &constants)
+  void Validate(const std::vector<cp_info *> &constants)
   {
     if (index < 1 || index >= constants.size())
     {
-      throw std::runtime_error("Invalid index given - outside constant pool");
+      throw std::runtime_error("Invalid index given - outside constant pool: Index " + std::to_string(index));
     }
 
     if (constants[index]->tag != expectedType)
     {
       throw std::runtime_error("Constant was not of expected type. Expected: " + 
-        std::to_string(expectedType) + " actual: " + std::to_string(constants[index]->tag));
+        std::to_string(expectedType) + " actual: " + std::to_string(constants[index]->tag) +
+        " Index: " + std::to_string(index) +  (message.length() > 0 ? " Message: " + message : ""));
     }
 
   }
 private:
   unsigned int index;
   unsigned char expectedType;
+  std::string message;
 };
 
 
@@ -50,6 +53,6 @@ private:
   void ReadFloat( std::istream & file, JavaHeader & header );
   void ReadLong( std::istream & file, JavaHeader & header );
   void ReadDouble( std::istream & file, JavaHeader & header );
-  void ReadNameAndType( std::istream & file, JavaHeader & header );
+  void ReadNameAndType( std::istream & file, JavaHeader & header, std::vector<Validation> &validations );
   void ReadUtf8( std::istream & file, JavaHeader & header);
 };

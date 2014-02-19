@@ -72,11 +72,11 @@ public:
 };
 
 
-class cp_pool_utf8 : public cp_info
+class cp_utf8_info : public cp_info
 {
 public:
-  cp_pool_utf8() : bytes(nullptr) { }
-  ~cp_pool_utf8() { delete [] bytes; }
+  cp_utf8_info() : bytes(nullptr) { }
+  ~cp_utf8_info() { delete [] bytes; }
 
   uint16_t length;
   uint8_t *bytes;

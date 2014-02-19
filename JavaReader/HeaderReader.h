@@ -37,6 +37,10 @@ public:
   ~HeaderReader();
   JavaHeader ReadHeader(std::istream &file);
 
+  
+
+  
+
 private:
 
   void ReadMagicNumber( std::istream &file, JavaHeader &header );
@@ -55,4 +59,7 @@ private:
   void ReadDouble( std::istream & file, JavaHeader & header );
   void ReadNameAndType( std::istream & file, JavaHeader & header, std::vector<Validation> &validations );
   void ReadUtf8( std::istream & file, JavaHeader & header);
+
+  void ReadAccessFlags( std::istream &file, JavaHeader &header );
+  void ReadThisClass( std::istream &file, JavaHeader &header );
 };

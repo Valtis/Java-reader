@@ -41,14 +41,17 @@ JavaHeader HeaderReader::ReadHeader(std::istream &file)
   JavaHeader header;
 
   ReadMagicNumber(file, header);
-
+  
   ReadMinorVersion(file, header);
-
   ReadMajorVersion(file, header);
-
+  
   ReadConstantPoolCount(file, header);
-
   ReadConstants(file, header);
+  
+  ReadAccessFlags(file, header);
+  
+  ReadThisClass(file, header);
+
 
   return header;
 }
@@ -242,7 +245,7 @@ void HeaderReader::ReadNameAndType( std::istream & file, JavaHeader & header, st
 
 void HeaderReader::ReadUtf8( std::istream & file, JavaHeader & header )
 {
-  auto p = new cp_pool_utf8;
+  auto p = new cp_utf8_info;
   p->tag = CONSTANT_Utf8;
   file.read((char *)&p->length, 2);
   SwapEndianess16(p->length);
@@ -259,4 +262,46 @@ void HeaderReader::ReadUtf8( std::istream & file, JavaHeader & header )
   }
 
   header.constant_pool.push_back(p);
+}
+
+void HeaderReader::ReadAccessFlags( std::istream &file, JavaHeader &header )
+{
+  file.read((char *)&header.access_flags, 2);
+  SwapEndianess16(header.access_flags);
+
+  // check for invalid combinations
+  if (header.access_flags & ACC_INTERFACE)
+  {
+    if (!(header.access_flags & ACC_ABSTRACT))
+    {
+      throw std::runtime_error("Invalid access flags - interface must be also abstract");
+    }
+
+    if ((header.access_flags & ACC_FINAL) || (header.access_flags & ACC_SUPER))
+    {
+      throw std::runtime_error("Invalid access flags - interface cannot set final or super flags");
+    }
+  } 
+  else if ((header.access_flags & ACC_FINAL) && ((header.access_flags & ACC_ABSTRACT)))
+  {
+    throw std::runtime_error("Invalid access flags - class cannot be both final and abstract");
+  }
+}
+
+void HeaderReader::ReadThisClass( std::istream &file, JavaHeader &header )
+{
+  file.read((char *)&header.this_class, 2);
+  SwapEndianess16(header.this_class);
+
+  if (header.this_class < 1 || header.this_class >= header.constant_pool_count)
+  {
+    throw std::runtime_error("Invalid index to this class: " + std::to_string(header.this_class));
+  }
+
+  if (header.constant_pool[header.this_class]->tag != CONSTANT_Class)
+  {
+    throw std::runtime_error("Invalid constant type for this_class. Expected " + std::to_string(CONSTANT_Class) +
+      " but actual type is " + std::to_string(header.constant_pool[header.this_class]->tag));
+  }
+
 }

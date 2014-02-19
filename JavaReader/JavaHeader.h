@@ -3,6 +3,11 @@
 #include "ConstantPool.h"
 #include <vector>
 const unsigned int JAVA_MAGIC_NUMBER = 0xCAFEBABE;
+const int ACC_PUBLIC = 0x0001;
+const int ACC_FINAL = 0x0010;
+const int ACC_SUPER = 0x0020;
+const int ACC_INTERFACE = 0x0200;
+const int ACC_ABSTRACT = 0x0400;
 
 struct JavaHeader
 {
@@ -21,12 +26,13 @@ struct JavaHeader
   }
 
 
-  unsigned int magic_number;
-  unsigned short int minor_version;
-  unsigned short int major_version;
-  unsigned short int constant_pool_count;
-
+  uint32_t magic_number;
+  uint16_t minor_version;
+  uint16_t major_version;
+  uint16_t constant_pool_count;
   std::vector<cp_info *> constant_pool;
+  uint16_t access_flags;
+  uint16_t this_class;
 
 #ifdef _DEBUG
   const char * GetVersion()

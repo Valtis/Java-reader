@@ -32,5 +32,11 @@
     <ClInclude Include="ConstantPool.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="AccessFlags.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Field.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
 </Project>

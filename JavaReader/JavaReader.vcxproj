@@ -70,7 +70,9 @@
     <ClCompile Include="main.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="AccessFlags.h" />
     <ClInclude Include="ConstantPool.h" />
+    <ClInclude Include="Field.h" />
     <ClInclude Include="JavaHeader.h" />
     <ClInclude Include="HeaderReader.h" />
   </ItemGroup>

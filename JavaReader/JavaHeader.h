@@ -1,13 +1,11 @@
 #pragma once
-#include <memory>
+#include <cstdint>
+#include "AccessFlags.h"
 #include "ConstantPool.h"
+#include "Field.h"
 #include <vector>
+
 const unsigned int JAVA_MAGIC_NUMBER = 0xCAFEBABE;
-const int ACC_PUBLIC = 0x0001;
-const int ACC_FINAL = 0x0010;
-const int ACC_SUPER = 0x0020;
-const int ACC_INTERFACE = 0x0200;
-const int ACC_ABSTRACT = 0x0400;
 
 struct JavaHeader
 {

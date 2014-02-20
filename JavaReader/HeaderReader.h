@@ -36,7 +36,6 @@ public:
   HeaderReader();
   ~HeaderReader();
   JavaHeader ReadHeader(std::istream &file);
-
  
 private:
 
@@ -62,5 +61,8 @@ private:
   void ReadInterfaceCount( std::istream &file, JavaHeader &header );
   void ReadInterfaces( JavaHeader &header, std::istream &file );
   void ReadFieldCount( std::istream &file, JavaHeader &header );
+  void ReadFields( JavaHeader &header, std::istream &file );
+
+  void ReadFieldAttributes( field_info &field, std::istream &file );
 
 };

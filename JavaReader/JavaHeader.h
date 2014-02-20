@@ -35,6 +35,7 @@ struct JavaHeader
   uint16_t interfaces_count;
   std::vector<uint16_t> interfaces;
   uint16_t field_count;
+  std::vector<field_info> fields;
 
 #ifdef _DEBUG
   const char * GetVersion()

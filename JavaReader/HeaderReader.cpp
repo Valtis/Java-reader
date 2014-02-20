@@ -55,7 +55,9 @@ JavaHeader HeaderReader::ReadHeader(std::istream &file)
 
   ReadInterfaceCount(file, header);
   ReadInterfaces(header, file);
+
   ReadFieldCount(file, header);
+  ReadFields(header, file);
 
 
   return header;
@@ -65,6 +67,10 @@ void HeaderReader::ReadMagicNumber( std::istream &file, JavaHeader &header )
 {
   file.read((char *)&header.magic_number, 4);
   SwapEndianess32(header.magic_number);
+  if (header.magic_number != JAVA_MAGIC_NUMBER)
+  {
+    throw std::runtime_error("Magic constant does not match - not a java class file!");
+  }
 }
 
 void HeaderReader::ReadMinorVersion( std::istream &file, JavaHeader &header )
@@ -363,4 +369,51 @@ void HeaderReader::ReadFieldCount( std::istream &file, JavaHeader &header )
 {
   file.read((char *)&header.field_count, 2);
   SwapEndianess16(header.field_count);
+}
+
+void HeaderReader::ReadFields( JavaHeader &header, std::istream &file )
+{
+  for (int i = 0; i < header.field_count; ++i)
+  {
+    field_info field;
+    file.read((char *)&field.access_flags, 2);
+    SwapEndianess16(field.access_flags);
+
+    file.read((char *)&field.name_index, 2);
+    SwapEndianess16(field.name_index);
+
+    file.read((char *)&field.descriptor_index, 2);
+    SwapEndianess16(field.descriptor_index);
+
+    file.read((char *)&field.attributes_count, 2);
+    SwapEndianess16(field.attributes_count);
+
+    ReadFieldAttributes(field, file);
+
+
+    header.fields.push_back(field);
+  }
+}
+
+void HeaderReader::ReadFieldAttributes( field_info &field, std::istream &file )
+{
+  for (int i = 0; i < field.attributes_count; ++i)
+  {
+    attribute_info attribute;
+
+    file.read((char *)&attribute.attribute_name_index, 2);
+    SwapEndianess16(attribute.attribute_name_index);
+
+
+    file.read((char *)&attribute.attribute_length, 4);
+    SwapEndianess32(attribute.attribute_length);
+
+    attribute.info = new uint8_t[attribute.attribute_length];
+
+    for (int j = 0; j < attribute.attribute_length; ++j)
+    {
+      file.read((char *)(attribute.info +j ), 1);
+    }
+    field.attributes.push_back(attribute);
+  }
 }

@@ -63,6 +63,8 @@ private:
   void ReadFieldCount( std::istream &file, JavaHeader &header );
   void ReadFields( JavaHeader &header, std::istream &file );
 
+	void ReadFieldAccessFlags(std::istream & file, field_info &field);
+
   void ReadFieldAttributes( field_info &field, std::istream &file );
 
 };

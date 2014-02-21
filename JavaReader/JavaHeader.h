@@ -10,9 +10,9 @@ const unsigned int JAVA_MAGIC_NUMBER = 0xCAFEBABE;
 struct JavaHeader
 {
   JavaHeader() { }
-  ~JavaHeader() 
+  ~JavaHeader()
   {
-  
+
   }
 
   void ReleaseMemory()

@@ -80,7 +80,10 @@ JavaHeader HeaderReader::ReadHeader(std::istream &file)
   ReadInterfaces(header, file);
 
   ReadFieldCount(file, header);
-  ReadFields(header, file);
+  ReadFields(file, header);
+
+  ReadMethodCount(file, header);
+  //ReadMethods(file, header);
 
 
   return header;
@@ -298,15 +301,22 @@ void HeaderReader::ReadAccessFlags(std::istream &file, JavaHeader &header)
       throw std::runtime_error("Invalid access flags - interface must be also abstract");
     }
 
-    if ((header.access_flags & ACC_FINAL) || (header.access_flags & ACC_SUPER))
+    if ((header.access_flags & ACC_FINAL) || (header.access_flags & ACC_SUPER) || (header.access_flags & ACC_ENUM)) 
     {
-      throw std::runtime_error("Invalid access flags - interface cannot set final or super flags");
+      throw std::runtime_error("Invalid access flags - interface cannot set final, super or enum flags");
     }
   }
   else if ((header.access_flags & ACC_FINAL) && ((header.access_flags & ACC_ABSTRACT)))
   {
     throw std::runtime_error("Invalid access flags - class cannot be both final and abstract");
   }
+
+  if ((header.access_flags & ACC_ANNOTATION) && !(header.access_flags & ACC_INTERFACE))
+  {
+    throw std::runtime_error("If annotation flag is set, interface flag must also be set");
+  }
+
+
 }
 
 void HeaderReader::ReadThisClass(std::istream &file, JavaHeader &header)
@@ -373,17 +383,17 @@ void HeaderReader::ReadInterfaces(JavaHeader &header, std::istream &file)
 
 void HeaderReader::ReadFieldCount(std::istream &file, JavaHeader &header)
 {
-  Read16(file, header.field_count);
+  Read16(file, header.fields_count);
 }
 
-void HeaderReader::ReadFields(JavaHeader &header, std::istream &file)
+void HeaderReader::ReadFields(std::istream &file, JavaHeader &header)
 {
 
-  for (int i = 0; i < header.field_count; ++i)
+  for (int i = 0; i < header.fields_count; ++i)
   {
     field_info field;
 
-    ReadFieldAccessFlags(file, field);
+    ReadFieldAccessFlags(file, field, header.access_flags & ACC_INTERFACE);
 
     Read16(file, field.name_index);
     Validation name_index_validation(field.name_index, CONSTANT_Utf8);
@@ -394,15 +404,15 @@ void HeaderReader::ReadFields(JavaHeader &header, std::istream &file)
     descriptor_index_validation.Validate(header.constant_pool);
 
     Read16(file, field.attributes_count);
-    ReadFieldAttributes(field, file);
+    ReadAttributes(field.attributes_count, field.attributes, file);
 
     header.fields.push_back(field);
   }
 }
 
-void HeaderReader::ReadFieldAttributes(field_info &field, std::istream &file)
+void HeaderReader::ReadAttributes(const int count, std::vector<attribute_info> &attributes, std::istream &file)
 {
-  for (int i = 0; i < field.attributes_count; ++i)
+  for (int i = 0; i < count; ++i)
   {
     attribute_info attribute;
 
@@ -415,36 +425,115 @@ void HeaderReader::ReadFieldAttributes(field_info &field, std::istream &file)
     {
       Read8(file, attribute.info[j]);
     }
-    field.attributes.push_back(attribute);
+    attributes.push_back(attribute);
   }
 }
 
-void HeaderReader::ReadFieldAccessFlags(std::istream & file, field_info &field)
+void HeaderReader::ReadFieldAccessFlags(std::istream & file, field_info &field, bool isInterface)
 {
   Read16(file, field.access_flags);
+  CheckForMultipleAccessLevels(field.access_flags, "Invalid access modifiers for a field - cannot have multiple access levels");
+
+
+  if ((field.access_flags & ACC_FINAL) && (field.access_flags & ACC_VOLATILE))
+  {
+    throw std::runtime_error("Field cannot be both volatile and final");
+  }
+
+  if (isInterface)
+  {
+    if (!(field.access_flags & ACC_PUBLIC) || !(field.access_flags & ACC_STATIC) || !(field.access_flags & ACC_FINAL))
+    {
+      throw std::runtime_error("Interface fields must be public, static and final");
+    }
+    
+    if ((field.access_flags & ACC_VOLATILE) || (field.access_flags & ACC_TRANSIENT) || (field.access_flags & ACC_ENUM))
+    {
+      throw std::runtime_error("Interface cannot have its volatile, transient or enum flags set");
+    }
+  }
+
+}
+
+void HeaderReader::ReadMethodCount(std::istream & file, JavaHeader &header)
+{
+  Read16(file, header.methods_count);
+}
+
+void HeaderReader::ReadMethods(std::istream & file, JavaHeader &header)
+{
+  for (int i = 0; i < header.methods_count; ++i)
+  {
+    method_info method;
+    ReadMethodAccessFlags(file, method, header.access_flags & ACC_INTERFACE);
+
+    Read16(file, method.name_index);
+    Validation name_validation(method.name_index, CONSTANT_Utf8);
+    name_validation.Validate(header.constant_pool);
+
+    Read16(file, method.descriptor_index);
+    
+    Validation descriptor_validation(method.descriptor_index, CONSTANT_Utf8);
+    descriptor_validation.Validate(header.constant_pool);
+
+    ReadAttributes(method.attribute_count, method.attributes, file);
+
+
+    header.methods.push_back(method);
+  }
+}
+
+void HeaderReader::ReadMethodAccessFlags(std::istream & file, method_info &method, bool isInterface)
+{
+  Read16(file, method.access_flags);
+  CheckForMultipleAccessLevels(method.access_flags, "Invalid access modifiers for a method - cannot have multiple access levels");
+  
+  if ((method.access_flags & ACC_ABSTRACT) && ((method.access_flags & ACC_FINAL) || (method.access_flags & ACC_NATIVE) || (method.access_flags & ACC_PRIVATE) ||
+     (method.access_flags & ACC_STATIC) || (method.access_flags & ACC_STRICT) || (method.access_flags & ACC_SYNCHRONIZED))) 
+  {
+    throw std::runtime_error("Abstract method cannot have its final, native, private, static, strict or synchronized fields set");
+  }
+
+  if (isInterface)
+  {
+    if (!(method.access_flags & ACC_ABSTRACT) || !(method.access_flags & ACC_PUBLIC))
+    {
+      throw std::runtime_error("Interface methods must have their abstract and public flags set");
+    }
+    
+    if ((method.access_flags & ACC_STATIC) || (method.access_flags & ACC_FINAL) || (method.access_flags & ACC_SYNCHRONIZED) ||
+      (method.access_flags & ACC_NATIVE) || (method.access_flags & ACC_STRICT))
+    {
+      throw std::runtime_error("Interface methods cannot have their static, final, synchronized, native or strict flags set");
+    }
+  }
+  /* add checks for <init> access flags
+   "A specific instance initialization method (§2.9) may have at most one of its ACC_PRIVATE, ACC_PROTECTED, and ACC_PUBLIC flags set, and may also have its ACC_STRICT, 
+    ACC_VARARGS and ACC_SYNTHETIC flags set, but must not have any of the other flags in Table 4.5 set."
+   */
+
+}
+
+void HeaderReader::CheckForMultipleAccessLevels(const uint16_t access_flags, std::string errorMsg)
+{
   int access_modifiers = 0;
-  if (field.access_flags & ACC_PUBLIC)
+  if (access_flags & ACC_PUBLIC)
   {
     ++access_modifiers;
   }
 
-  if (field.access_flags & ACC_PROTECTED)
+  if (access_flags & ACC_PROTECTED)
   {
     ++access_modifiers;
   }
 
-  if (field.access_flags & ACC_PRIVATE)
+  if (access_flags & ACC_PRIVATE)
   {
     ++access_modifiers;
   }
 
   if (access_modifiers > 1)
   {
-    throw std::runtime_error("Invalid access modifiers for a field - cannot have multiple access levels");
-  }
-
-  if ((field.access_flags & ACC_FINAL) && (field.access_flags & ACC_VOLATILE))
-  {
-    throw std::runtime_error("Field cannot be both volatile and final");
+    throw std::runtime_error(errorMsg);
   }
 }

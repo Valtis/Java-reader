@@ -1,14 +1,8 @@
 #pragma once
 #include <cstdint>
 #include <vector>
+#include "Attribute.h"
 
-struct attribute_info
-{
-  uint16_t attribute_name_index;
-  uint32_t attribute_length;
-  uint8_t *info;
-
-};
 
 struct field_info {
   uint16_t access_flags;

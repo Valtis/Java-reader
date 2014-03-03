@@ -3,6 +3,7 @@
 #include "AccessFlags.h"
 #include "ConstantPool.h"
 #include "Field.h"
+#include "MethodInfo.h"
 #include <vector>
 
 const unsigned int JAVA_MAGIC_NUMBER = 0xCAFEBABE;
@@ -34,8 +35,10 @@ struct JavaHeader
   uint16_t super_class;
   uint16_t interfaces_count;
   std::vector<uint16_t> interfaces;
-  uint16_t field_count;
+  uint16_t fields_count;
   std::vector<field_info> fields;
+  uint16_t methods_count;
+  std::vector<method_info> methods;
 
 #ifdef _DEBUG
   const char * GetVersion()

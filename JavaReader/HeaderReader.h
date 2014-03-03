@@ -61,10 +61,16 @@ private:
   void ReadInterfaceCount(std::istream &file, JavaHeader &header);
   void ReadInterfaces(JavaHeader &header, std::istream &file);
   void ReadFieldCount(std::istream &file, JavaHeader &header);
-  void ReadFields(JavaHeader &header, std::istream &file);
+  void ReadFields(std::istream &file, JavaHeader &header);
 
-  void ReadFieldAccessFlags(std::istream & file, field_info &field);
+  void ReadFieldAccessFlags(std::istream & file, field_info &field, bool isInterface);
 
-  void ReadFieldAttributes(field_info &field, std::istream &file);
+  void CheckForMultipleAccessLevels(const uint16_t access_flags, std::string errorMsg);
+
+  void ReadAttributes(const int count, std::vector<attribute_info> &attributes, std::istream &file);
+  void ReadMethodCount(std::istream & file, JavaHeader &header);
+  void ReadMethods(std::istream & file, JavaHeader &header);
+
+  void ReadMethodAccessFlags(std::istream & file, method_info &method, bool isInterface);
 
 };

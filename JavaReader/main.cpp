@@ -13,7 +13,7 @@ void PrintFields(JavaHeader &header);
 
 int main()
 {
-  std::ifstream file("Peli.class", std::ios::binary);
+  std::ifstream file("TestiClass.class", std::ios::binary);
   HeaderReader h;
   JavaHeader header;
   try
@@ -26,7 +26,7 @@ int main()
     system("pause");
     return -1;
   }
-
+  
   PrintMagicNumber(header);
   PrintVersionInfo(header);
   PrintConstantPool(header);
@@ -115,7 +115,7 @@ void PrintThisAndSuperClass(JavaHeader &header)
   std::cout << "Super_class: " << header.super_class << "\n";
   std::cout << "Super class name: ";
   {
-    auto cp_class = static_cast<cp_class_info *>(header.constant_pool[header.super_class]);
+    auto cp_class = static_cast<cp_class_info *>(header.constant_pool[header.super_class].get());
     PrintStr(header.constant_pool[cp_class->name_index]);
   }
 }
@@ -131,7 +131,7 @@ void PrintInterfaces(JavaHeader &header)
     {
       std::cout << "  " << i << "\n";
       std::cout << "  Name: ";
-      auto cp_class = static_cast<cp_class_info*>(header.constant_pool[i]);
+      auto cp_class = static_cast<cp_class_info *>(header.constant_pool[i].get());
       PrintStr(header.constant_pool[cp_class->name_index]);
     }
   }
@@ -187,41 +187,61 @@ void PrintFieldAccessFlags(const field_info &field)
     std::cout << "    Enum" << "\n";
 }
 
+void PrintConstant(uint16_t constant_value_index, JavaHeader &header)
+{
+  auto cp = header.constant_pool[constant_value_index];
+  
+  if (cp->tag == CONSTANT_Utf8)
+  {
+    std::cout << "    Constant_Utf8, value: ";
+    PrintStr(cp);
+  }
+  else if (cp->tag == CONSTANT_Long)
+  {
+    std::cout << "    Constant_Long, value: ";
+    auto t = static_cast<cp_long_double_info *>(cp.get());
+    std::cout << t->value.l;
+  }
+  else if (cp->tag == CONSTANT_Integer)
+  {
+    std::cout << "    Constant_Integer, value: ";
+    auto t = static_cast<cp_integer_float_info *>(cp.get());
+    std::cout << t->value.i;
+  }
+  else if (cp->tag == CONSTANT_Float)
+  {
+    std::cout << "    Constant_Float, value: ";
+    auto t = static_cast<cp_integer_float_info *>(cp.get());
+    std::cout << t->value.f;
+  }
+  else if (cp->tag == CONSTANT_Double)
+  {
+    std::cout << "    Constant_Double, value: ";
+    auto t = static_cast<cp_long_double_info *>(cp.get());
+    std::cout << t->value.d;
+  }
+  else 
+  {
+    std::cout << "TAG: " << (int)cp->tag << "\n";
+  }
+
+}
+
 void PrintFieldAttributes(const field_info &field, JavaHeader &header)
 {
   for (const auto a : field.attributes)
   {
     std::cout << "    Attribute name: ";
-    PrintStr(header.constant_pool[a.attribute_name_index]);
+    PrintStr(header.constant_pool[a->attribute_name_index]);
 
-    std::cout << "\n    Comparing attribute name to Signature: " << StrCmp(header.constant_pool[a.attribute_name_index], "Signature");
-    std::cout << "\n    Comparing attribute name to ConstantValue: " << StrCmp(header.constant_pool[a.attribute_name_index], "ConstantValue");
-
-
-    std::cout << "\n    Attribute length: " << a.attribute_length << "\n";
-    std::cout << "    Attribute data: ";
-
-    for (int i = 0; i < a.attribute_length; ++i)
+    if (a->type == AttributeType::CONSTANT_VALUE)
     {
-      std::cout << a.info[i];
+      std::cout << "    Constant value attribute\n";
+      auto *cv = static_cast<attribute_constant_value_info *>(a.get());
+      PrintConstant(cv->constant_value_index, header);
     }
 
-    uint16_t temp = 0;
-    temp = a.info[0] << 8 | a.info[1];
-    std::cout << "\n    Temp: " << temp << "\n";
-
-    std::cout << "    Tag: " << (int)header.constant_pool[temp]->tag << "\n";
-    if (header.constant_pool[temp]->tag == CONSTANT_Utf8)
-    {
-      std::cout << "    UTF tag value: ";
-      PrintStr(header.constant_pool[temp]);
-      std::cout << "\n";
-    }
-    else if (header.constant_pool[temp]->tag == CONSTANT_Long)
-    {
-      std::cout << "Long value: " << ((cp_long_double_info *)header.constant_pool[temp])->value.l;
-    }
-
+    
 
     std::cout << "\n";
   }

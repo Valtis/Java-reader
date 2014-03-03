@@ -68,6 +68,7 @@
   <ItemGroup>
     <ClCompile Include="HeaderReader.cpp" />
     <ClCompile Include="main.cpp" />
+    <ClCompile Include="Utility.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="AccessFlags.h" />

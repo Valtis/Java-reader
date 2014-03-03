@@ -1,6 +1,8 @@
 #include "HeaderReader.h"
 #include <istream>
 #include <limits>       
+#include <iostream>
+#include "Utility.h"
 
 void SwapEndianess16(uint16_t &val)
 {
@@ -174,7 +176,7 @@ void HeaderReader::ReadConstants(std::istream &file, JavaHeader &header)
 
 void HeaderReader::ReadClassData(std::istream & file, JavaHeader & header, std::vector<Validation> &validations)
 {
-  auto p = new cp_class_info;
+  auto p = std::make_shared<cp_class_info>();
   p->tag = CONSTANT_Class;
   Read16(file, p->name_index);
   validations.emplace_back(p->name_index, CONSTANT_Utf8);
@@ -183,7 +185,7 @@ void HeaderReader::ReadClassData(std::istream & file, JavaHeader & header, std::
 
 void HeaderReader::ReadRef(std::istream & file, JavaHeader & header, unsigned char tag, std::vector<Validation> &validations)
 {
-  auto p = new cp_refs_info;
+  auto p = std::make_shared<cp_refs_info>();
   p->tag = tag;
 
   Read16(file, p->class_index);
@@ -198,7 +200,7 @@ void HeaderReader::ReadRef(std::istream & file, JavaHeader & header, unsigned ch
 
 void HeaderReader::ReadString(std::istream & file, JavaHeader & header, std::vector<Validation> &validations)
 {
-  auto p = new cp_string_info;
+  auto p = std::make_shared<cp_string_info>();
   p->tag = CONSTANT_String;
 
   Read16(file, p->string_index);
@@ -209,7 +211,7 @@ void HeaderReader::ReadString(std::istream & file, JavaHeader & header, std::vec
 
 void HeaderReader::ReadInteger(std::istream & file, JavaHeader & header)
 {
-  auto p = new cp_integer_float_info;
+  auto p = std::make_shared<cp_integer_float_info>();
   p->tag = CONSTANT_Integer;
 
   uint32_t temp;
@@ -220,7 +222,7 @@ void HeaderReader::ReadInteger(std::istream & file, JavaHeader & header)
 
 void HeaderReader::ReadFloat(std::istream & file, JavaHeader & header)
 {
-  auto p = new cp_integer_float_info;
+  auto p = std::make_shared<cp_integer_float_info>();
   p->tag = CONSTANT_Float;
 
   uint32_t temp;
@@ -232,31 +234,36 @@ void HeaderReader::ReadFloat(std::istream & file, JavaHeader & header)
 
 void HeaderReader::ReadLong(std::istream & file, JavaHeader & header)
 {
-  auto p = new cp_long_double_info;
+  auto p = std::make_shared<cp_long_double_info>();
   p->tag = CONSTANT_Long;
+  uint32_t high, low;
+  Read32(file, high);
+  Read32(file, low);
 
-  uint64_t temp;
-  Read64(file, temp);
-  p->value.l = temp;
+  p->value.l = ((uint64_t)(high) << 32) + low;
   header.constant_pool.push_back(p);
   header.constant_pool.push_back(nullptr); // takes two slots
 }
 
 void HeaderReader::ReadDouble(std::istream & file, JavaHeader & header)
 {
-  auto p = new cp_long_double_info;
+  auto p = std::make_shared<cp_long_double_info>();
   p->tag = CONSTANT_Double;
 
-  uint64_t temp;
-  Read64(file, temp);
-  p->value.l = temp;
+  uint32_t high, low;
+  Read32(file, high);
+  Read32(file, low);
+ 
+  p->value.l = ((uint64_t)(high) << 32) + low;
+
+
   header.constant_pool.push_back(p);
   header.constant_pool.push_back(nullptr); // takes two slots
 }
 
 void HeaderReader::ReadNameAndType(std::istream & file, JavaHeader & header, std::vector<Validation> &validations)
 {
-  auto p = new cp_name_and_type_info;
+  auto p = std::make_shared<cp_name_and_type_info>();
   p->tag = CONSTANT_NameAndType;
 
   Read16(file, p->name_index);
@@ -270,7 +277,7 @@ void HeaderReader::ReadNameAndType(std::istream & file, JavaHeader & header, std
 
 void HeaderReader::ReadUtf8(std::istream & file, JavaHeader & header)
 {
-  auto p = new cp_utf8_info;
+  auto p = std::make_shared<cp_utf8_info>();
   p->tag = CONSTANT_Utf8;
 
   Read16(file, p->length);
@@ -404,30 +411,59 @@ void HeaderReader::ReadFields(std::istream &file, JavaHeader &header)
     descriptor_index_validation.Validate(header.constant_pool);
 
     Read16(file, field.attributes_count);
-    ReadAttributes(field.attributes_count, field.attributes, file);
+    ReadAttributes(file, header, field.attributes_count, field.attributes);
 
     header.fields.push_back(field);
   }
 }
 
-void HeaderReader::ReadAttributes(const int count, std::vector<attribute_info> &attributes, std::istream &file)
+void HeaderReader::ReadAttributes(std::istream &file, const JavaHeader &header, const int count, std::vector<std::shared_ptr<attribute_info>> &attributes)
 {
   for (int i = 0; i < count; ++i)
   {
-    attribute_info attribute;
+    std::shared_ptr<attribute_info> attribute;
+    uint16_t name_index;
+    uint32_t attribute_length;
+    Read16(file, name_index);
+    Validation name_validation(name_index, CONSTANT_Utf8);
+    name_validation.Validate(header.constant_pool);
 
-    Read16(file, attribute.attribute_name_index);
-    Read32(file, attribute.attribute_length);
 
-    attribute.info = new uint8_t[attribute.attribute_length];
-
-    for (unsigned int j = 0; j < attribute.attribute_length; ++j)
+    Read32(file, attribute_length);
+    
+    if (StrCmp(header.constant_pool[name_index].get(), "ConstantValue"))
     {
-      Read8(file, attribute.info[j]);
+      if (attribute_length != 2)
+      {
+        throw std::runtime_error("Invalid attribute length for attribute ConstantValue");
+      }
+      attribute = ReadConstantValueAttribute(file);
     }
+    else 
+    {
+      std::cout << "Unknown attribute: ";
+      PrintStr(header.constant_pool[name_index].get());
+      // skip the attribute bytes
+      file.seekg(attribute_length, std::ios_base::cur);
+      continue;  // unknown attributes must be silently ignored
+    }
+    
+   
+    attribute->attribute_name_index = name_index;
+    
     attributes.push_back(attribute);
   }
 }
+
+
+std::shared_ptr<attribute_info> HeaderReader::ReadConstantValueAttribute(std::istream & file)
+{
+  auto attr = std::make_shared<attribute_constant_value_info>();
+  Read16(file, attr->constant_value_index);
+
+  return attr;
+}
+
 
 void HeaderReader::ReadFieldAccessFlags(std::istream & file, field_info &field, bool isInterface)
 {
@@ -476,7 +512,7 @@ void HeaderReader::ReadMethods(std::istream & file, JavaHeader &header)
     Validation descriptor_validation(method.descriptor_index, CONSTANT_Utf8);
     descriptor_validation.Validate(header.constant_pool);
 
-    ReadAttributes(method.attribute_count, method.attributes, file);
+    ReadAttributes(file, header, method.attribute_count, method.attributes);
 
 
     header.methods.push_back(method);

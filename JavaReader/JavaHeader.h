@@ -5,6 +5,7 @@
 #include "Field.h"
 #include "MethodInfo.h"
 #include <vector>
+#include <memory>
 
 const unsigned int JAVA_MAGIC_NUMBER = 0xCAFEBABE;
 
@@ -16,20 +17,11 @@ struct JavaHeader
 
   }
 
-  void ReleaseMemory()
-  {
-    for (cp_info *p : constant_pool)
-    {
-      delete p;
-    }
-  }
-
-
   uint32_t magic_number;
   uint16_t minor_version;
   uint16_t major_version;
   uint16_t constant_pool_count;
-  std::vector<cp_info *> constant_pool;
+  std::vector<std::shared_ptr<cp_info>> constant_pool;
   uint16_t access_flags;
   uint16_t this_class;
   uint16_t super_class;

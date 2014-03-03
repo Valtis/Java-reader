@@ -8,7 +8,7 @@ public:
   Validation(unsigned int i, unsigned char type) : index(i), expectedType(type) {}
   Validation(unsigned int i, unsigned char type, std::string msg) : index(i), expectedType(type), message(msg) {}
 
-  void Validate(const std::vector<cp_info *> &constants)
+  void Validate(const std::vector<std::shared_ptr<cp_info>> &constants)
   {
     if (index < 1 || index >= constants.size())
     {
@@ -67,10 +67,10 @@ private:
 
   void CheckForMultipleAccessLevels(const uint16_t access_flags, std::string errorMsg);
 
-  void ReadAttributes(const int count, std::vector<attribute_info> &attributes, std::istream &file);
+  void ReadAttributes(std::istream &file, const JavaHeader &header, const int count, std::vector<std::shared_ptr<attribute_info>> &attributes);
   void ReadMethodCount(std::istream & file, JavaHeader &header);
   void ReadMethods(std::istream & file, JavaHeader &header);
 
   void ReadMethodAccessFlags(std::istream & file, method_info &method, bool isInterface);
-
+  std::shared_ptr<attribute_info> ReadConstantValueAttribute(std::istream & file);
 };

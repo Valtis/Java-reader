@@ -1,4 +1,5 @@
 #pragma once
+#include <cstdint>
 
 const unsigned char CONSTANT_Class = 7;
 const unsigned char CONSTANT_Fieldref = 9;
